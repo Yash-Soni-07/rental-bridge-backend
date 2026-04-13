@@ -8,10 +8,14 @@ import {
     real,
     timestamp,
     pgEnum,
+    uniqueIndex,
+    check,
+    date,
+    numeric,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
-// ─── Enums ───────────────────────────────────────────────────────────────────
+// ─── Enums ─────────────────────────────────────────
 
 export const userRoleEnum = pgEnum("user_role", ["admin", "landlord", "tenant"]);
 
@@ -45,7 +49,7 @@ export const bookingStatusEnum = pgEnum("booking_status", [
     "completed",
 ]);
 
-// ─── 1. Users ─────────────────────────────────────────────────────────────────
+// ─── 1. Users ─────────────────────────────────────
 
 export const users = pgTable("users", {
     id: serial("id").primaryKey(),
@@ -59,12 +63,12 @@ export const users = pgTable("users", {
     is_verified: boolean("is_verified").default(false),
     profile_image: varchar("profile_image", { length: 255 }),
     address: text("address"),
-    date_of_birth: timestamp("date_of_birth"),
-    created_at: timestamp("created_at").defaultNow(),
-    updated_at: timestamp("updated_at").defaultNow(),
+    date_of_birth: date("date_of_birth"),
+    created_at: timestamp("created_at").defaultNow().notNull(),
+    updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// ─── 2. Properties ────────────────────────────────────────────────────────────
+// ─── 2. Properties ─────────────────────────────────
 
 export const properties = pgTable("properties", {
     id: serial("id").primaryKey(),
@@ -81,8 +85,8 @@ export const properties = pgTable("properties", {
     bedrooms: integer("bedrooms").notNull(),
     bathrooms: integer("bathrooms").notNull(),
     area_sqft: real("area_sqft").notNull(),
-    monthly_rent: real("monthly_rent").notNull(),
-    security_deposit: real("security_deposit").notNull(),
+    monthly_rent: numeric("monthly_rent", { precision: 12, scale: 2 }).notNull(),
+    security_deposit: numeric("security_deposit", { precision: 12, scale: 2 }).notNull(),
     is_furnished: boolean("is_furnished").default(false),
     pets_allowed: boolean("pets_allowed").default(false),
     smoking_allowed: boolean("smoking_allowed").default(false),
@@ -90,119 +94,185 @@ export const properties = pgTable("properties", {
     status: propertyStatusEnum("status").default("available"),
     available_from: timestamp("available_from").notNull(),
     lease_duration_months: integer("lease_duration_months").default(12),
-    owner_id: integer("owner_id").references(() => users.id).notNull(),
-    created_at: timestamp("created_at").defaultNow(),
-    updated_at: timestamp("updated_at").defaultNow(),
+
+    // 🔥 FIX: Prevent accidental owner deletion
+    owner_id: integer("owner_id")
+        .references(() => users.id, { onDelete: "restrict" })
+        .notNull(),
+
+    created_at: timestamp("created_at").defaultNow().notNull(),
+    updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// ─── 3. Property Images ───────────────────────────────────────────────────────
+// ─── 3. Property Images ────────────────────────────
 
 export const propertyImages = pgTable("property_images", {
     id: serial("id").primaryKey(),
-    property_id: integer("property_id").references(() => properties.id).notNull(),
-    image_url: varchar("image_url", { length: 255 }).notNull(),
+
+    // ✅ Safe cascade (dependent data only)
+    property_id: integer("property_id")
+        .references(() => properties.id, { onDelete: "cascade" })
+        .notNull(),
+
+    image_url: varchar("image_url", { length: 512 }).notNull(),
     is_primary: boolean("is_primary").default(false),
     caption: varchar("caption", { length: 255 }),
-    created_at: timestamp("created_at").defaultNow(),
+    created_at: timestamp("created_at").defaultNow().notNull(),
 });
 
-// ─── 4. Amenities ─────────────────────────────────────────────────────────────
+// ─── 4. Amenities ─────────────────────────────────
 
 export const amenities = pgTable("amenities", {
     id: serial("id").primaryKey(),
     name: varchar("name", { length: 100 }).notNull().unique(),
     icon: varchar("icon", { length: 100 }),
-    created_at: timestamp("created_at").defaultNow(),
+    created_at: timestamp("created_at").defaultNow().notNull(),
 });
 
-// ─── 5. Property Amenities (Junction) ────────────────────────────────────────
+// ─── 5. Property Amenities ────────────────────────
 
-export const propertyAmenities = pgTable("property_amenities", {
-    id: serial("id").primaryKey(),
-    property_id: integer("property_id").references(() => properties.id).notNull(),
-    amenity_id: integer("amenity_id").references(() => amenities.id).notNull(),
-});
+export const propertyAmenities = pgTable(
+    "property_amenities",
+    {
+        id: serial("id").primaryKey(),
+        property_id: integer("property_id")
+            .references(() => properties.id, { onDelete: "cascade" })
+            .notNull(),
+        amenity_id: integer("amenity_id")
+            .references(() => amenities.id, { onDelete: "cascade" })
+            .notNull(),
+    },
+    (table) => ({
+        uniquePropertyAmenity: uniqueIndex("unique_property_amenity").on(
+            table.property_id,
+            table.amenity_id
+        ),
+    })
+);
 
-// ─── 6. Applications ─────────────────────────────────────────────────────────
+// ─── 6. Applications ──────────────────────────────
 
 export const applications = pgTable("applications", {
     id: serial("id").primaryKey(),
-    property_id: integer("property_id").references(() => properties.id).notNull(),
-    applicant_id: integer("applicant_id").references(() => users.id).notNull(),
+
+    // 🔥 FIX: prevent data loss
+    property_id: integer("property_id")
+        .references(() => properties.id, { onDelete: "restrict" })
+        .notNull(),
+
+    applicant_id: integer("applicant_id")
+        .references(() => users.id, { onDelete: "restrict" })
+        .notNull(),
+
     status: applicationStatusEnum("status").default("pending"),
     message: text("message"),
-    monthly_income: real("monthly_income").notNull(),
+    monthly_income: numeric("monthly_income", { precision: 12, scale: 2 }).notNull(),
     employment_status: varchar("employment_status", { length: 100 }).notNull(),
     previous_address: text("previous_address"),
     references: text("references"),
     move_in_date: timestamp("move_in_date").notNull(),
-    created_at: timestamp("created_at").defaultNow(),
-    updated_at: timestamp("updated_at").defaultNow(),
+    created_at: timestamp("created_at").defaultNow().notNull(),
+    updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// ─── 7. Bookings ──────────────────────────────────────────────────────────────
+// ─── 7. Bookings ─────────────────────────────────
 
 export const bookings = pgTable("bookings", {
     id: serial("id").primaryKey(),
-    property_id: integer("property_id").references(() => properties.id).notNull(),
-    tenant_id: integer("tenant_id").references(() => users.id).notNull(),
+
+    // 🔥 CRITICAL FIX
+    property_id: integer("property_id")
+        .references(() => properties.id, { onDelete: "restrict" })
+        .notNull(),
+
+    tenant_id: integer("tenant_id")
+        .references(() => users.id, { onDelete: "restrict" })
+        .notNull(),
+
     status: bookingStatusEnum("status").default("pending"),
     start_date: timestamp("start_date").notNull(),
     end_date: timestamp("end_date").notNull(),
-    monthly_rent: real("monthly_rent").notNull(),
-    security_deposit: real("security_deposit").notNull(),
-    total_amount: real("total_amount").notNull(),
+    monthly_rent: numeric("monthly_rent", { precision: 12, scale: 2 }).notNull(),
+    security_deposit: numeric("security_deposit", { precision: 12, scale: 2 }).notNull(),
+    total_amount: numeric("total_amount", { precision: 12, scale: 2 }).notNull(),
     payment_status: varchar("payment_status", { length: 50 }).default("pending"),
     lease_document: varchar("lease_document", { length: 255 }),
-    created_at: timestamp("created_at").defaultNow(),
-    updated_at: timestamp("updated_at").defaultNow(),
+    created_at: timestamp("created_at").defaultNow().notNull(),
+    updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// ─── 8. Payments ──────────────────────────────────────────────────────────────
+// ─── 8. Payments ─────────────────────────────────
 
 export const payments = pgTable("payments", {
     id: serial("id").primaryKey(),
-    booking_id: integer("booking_id").references(() => bookings.id).notNull(),
-    amount: real("amount").notNull(),
+
+    // ✅ cascade OK (financial tied to booking)
+    booking_id: integer("booking_id")
+        .references(() => bookings.id, { onDelete: "cascade" })
+        .notNull(),
+
+    amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
     payment_type: varchar("payment_type", { length: 50 }).notNull(),
     payment_method: varchar("payment_method", { length: 50 }).notNull(),
     transaction_id: varchar("transaction_id", { length: 255 }),
     status: varchar("status", { length: 50 }).default("pending"),
     due_date: timestamp("due_date").notNull(),
     paid_date: timestamp("paid_date"),
-    created_at: timestamp("created_at").defaultNow(),
+    created_at: timestamp("created_at").defaultNow().notNull(),
 });
 
-// ─── 9. Maintenance Requests ──────────────────────────────────────────────────
+// ─── 9. Maintenance Requests ─────────────────────
 
 export const maintenanceRequests = pgTable("maintenance_requests", {
     id: serial("id").primaryKey(),
-    property_id: integer("property_id").references(() => properties.id).notNull(),
-    tenant_id: integer("tenant_id").references(() => users.id).notNull(),
+
+    property_id: integer("property_id")
+        .references(() => properties.id, { onDelete: "restrict" })
+        .notNull(),
+
+    tenant_id: integer("tenant_id")
+        .references(() => users.id, { onDelete: "restrict" })
+        .notNull(),
+
     title: varchar("title", { length: 255 }).notNull(),
     description: text("description").notNull(),
     priority: varchar("priority", { length: 20 }).default("medium"),
     status: varchar("status", { length: 50 }).default("open"),
-    estimated_cost: real("estimated_cost"),
-    actual_cost: real("actual_cost"),
+    estimated_cost: numeric("estimated_cost", { precision: 12, scale: 2 }),
+    actual_cost: numeric("actual_cost", { precision: 12, scale: 2 }),
     assigned_to: varchar("assigned_to", { length: 255 }),
     completed_date: timestamp("completed_date"),
-    created_at: timestamp("created_at").defaultNow(),
-    updated_at: timestamp("updated_at").defaultNow(),
+    created_at: timestamp("created_at").defaultNow().notNull(),
+    updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// ─── 10. Reviews ──────────────────────────────────────────────────────────────
+// ─── 10. Reviews ─────────────────────────────────
 
-export const reviews = pgTable("reviews", {
-    id: serial("id").primaryKey(),
-    property_id: integer("property_id").references(() => properties.id).notNull(),
-    reviewer_id: integer("reviewer_id").references(() => users.id).notNull(),
-    rating: integer("rating").notNull(),
-    title: varchar("title", { length: 255 }).notNull(),
-    comment: text("comment"),
-    is_verified: boolean("is_verified").default(false),
-    created_at: timestamp("created_at").defaultNow(),
-});
+export const reviews = pgTable(
+    "reviews",
+    {
+        id: serial("id").primaryKey(),
+
+        property_id: integer("property_id")
+            .references(() => properties.id, { onDelete: "cascade" }) // OK
+            .notNull(),
+
+        reviewer_id: integer("reviewer_id")
+            .references(() => users.id, { onDelete: "restrict" })
+            .notNull(),
+
+        rating: integer("rating").notNull(),
+        title: varchar("title", { length: 255 }).notNull(),
+        comment: text("comment"),
+        is_verified: boolean("is_verified").default(false),
+        created_at: timestamp("created_at").defaultNow().notNull(),
+    },
+    (table) => [
+        check("rating_check", sql`${table.rating} >= 1 AND ${table.rating} <= 5`),
+    ]
+);
+
+// ─── Relations (UNCHANGED — already correct) ─────
 
 // ─── Relations ────────────────────────────────────────────────────────────────
 

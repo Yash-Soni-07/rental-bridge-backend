@@ -5,87 +5,164 @@ import { eq } from "drizzle-orm";
 
 const router = Router();
 
+/**
+ * Helper: Validate ID
+ */
+const parseId = (idParam: string | string[] | undefined): number | null => {
+    if (!idParam || Array.isArray(idParam)) return null;
+
+    const id = Number(idParam);
+    if (!id || isNaN(id)) return null;
+
+    return id;
+};
+
 // GET /api/bookings — Admin: get all bookings
-router.get("/", async (req: Request, res: Response) => {
+router.get("/", async (_req: Request, res: Response) => {
     try {
         const all = await db.select().from(bookings);
-        res.json(all);
-    } catch (err) {
-        res.status(500).json({ error: "Failed to fetch bookings" });
+        return res.status(200).json(all);
+    } catch (error) {
+        console.error("GET /bookings error:", error);
+        return res.status(500).json({ error: "Failed to fetch bookings" });
     }
 });
 
 // GET /api/bookings/:id — Get single booking
 router.get("/:id", async (req: Request, res: Response) => {
+    const id = parseId(req.params.id);
+    if (!id) {
+        return res.status(400).json({ error: "Invalid booking ID" });
+    }
+
     try {
         const booking = await db
             .select()
             .from(bookings)
-            .where(eq(bookings.id, Number(req.params.id)));
-        if (!booking.length) return res.status(404).json({ error: "Booking not found" });
-        res.json(booking[0]);
-    } catch (err) {
-        res.status(500).json({ error: "Failed to fetch booking" });
+            .where(eq(bookings.id, id));
+
+        if (!booking.length) {
+            return res.status(404).json({ error: "Booking not found" });
+        }
+
+        return res.status(200).json(booking[0]);
+    } catch (error) {
+        console.error(`GET /bookings/${id} error:`, error);
+        return res.status(500).json({ error: "Failed to fetch booking" });
     }
 });
 
 // GET /api/bookings/tenant/:tenantId — Tenant: my bookings
 router.get("/tenant/:tenantId", async (req: Request, res: Response) => {
+    const tenantId = parseId(req.params.tenantId);
+    if (!tenantId) {
+        return res.status(400).json({ error: "Invalid tenant ID" });
+    }
+
     try {
         const tenantBookings = await db
             .select()
             .from(bookings)
-            .where(eq(bookings.tenant_id, Number(req.params.tenantId)));
-        res.json(tenantBookings);
-    } catch (err) {
-        res.status(500).json({ error: "Failed to fetch tenant bookings" });
+            .where(eq(bookings.tenant_id, tenantId));
+
+        return res.status(200).json(tenantBookings);
+    } catch (error) {
+        console.error(`GET /bookings/tenant/${tenantId} error:`, error);
+        return res.status(500).json({ error: "Failed to fetch tenant bookings" });
     }
 });
 
-// GET /api/bookings/property/:propertyId — Owner: bookings for my property
+// GET /api/bookings/property/:propertyId — Owner: bookings for property
 router.get("/property/:propertyId", async (req: Request, res: Response) => {
+    const propertyId = parseId(req.params.propertyId);
+    if (!propertyId) {
+        return res.status(400).json({ error: "Invalid property ID" });
+    }
+
     try {
         const propertyBookings = await db
             .select()
             .from(bookings)
-            .where(eq(bookings.property_id, Number(req.params.propertyId)));
-        res.json(propertyBookings);
-    } catch (err) {
-        res.status(500).json({ error: "Failed to fetch property bookings" });
+            .where(eq(bookings.property_id, propertyId));
+
+        return res.status(200).json(propertyBookings);
+    } catch (error) {
+        console.error(`GET /bookings/property/${propertyId} error:`, error);
+        return res.status(500).json({ error: "Failed to fetch property bookings" });
     }
 });
 
-// POST /api/bookings — Owner/Admin: create booking after approval
+// POST /api/bookings — Create booking
 router.post("/", async (req: Request, res: Response) => {
     try {
-        const newBooking = await db.insert(bookings).values(req.body).returning();
-        res.status(201).json(newBooking[0]);
-    } catch (err) {
-        res.status(500).json({ error: "Failed to create booking" });
+        if (!req.body || Object.keys(req.body).length === 0) {
+            return res.status(400).json({ error: "Request body is required" });
+        }
+
+        const newBooking = await db
+            .insert(bookings)
+            .values(req.body)
+            .returning();
+
+        return res.status(201).json(newBooking[0]);
+    } catch (error) {
+        console.error("POST /bookings error:", error);
+        return res.status(500).json({ error: "Failed to create booking" });
     }
 });
 
-// PUT /api/bookings/:id — Owner/Admin: update booking status
+// PUT /api/bookings/:id — Update booking
 router.put("/:id", async (req: Request, res: Response) => {
+    const id = parseId(req.params.id);
+    if (!id) {
+        return res.status(400).json({ error: "Invalid booking ID" });
+    }
+
     try {
+        if (!req.body || Object.keys(req.body).length === 0) {
+            return res.status(400).json({ error: "Request body is required" });
+        }
+
         const updated = await db
             .update(bookings)
             .set({ ...req.body, updated_at: new Date() })
-            .where(eq(bookings.id, Number(req.params.id)))
+            .where(eq(bookings.id, id))
             .returning();
-        res.json(updated[0]);
-    } catch (err) {
-        res.status(500).json({ error: "Failed to update booking" });
+
+        if (!updated.length) {
+            return res.status(404).json({ error: "Booking not found" });
+        }
+
+        return res.status(200).json(updated[0]);
+    } catch (error) {
+        console.error(`PUT /bookings/${id} error:`, error);
+        return res.status(500).json({ error: "Failed to update booking" });
     }
 });
 
-// DELETE /api/bookings/:id — Admin: delete booking
+// DELETE /api/bookings/:id — Delete booking
 router.delete("/:id", async (req: Request, res: Response) => {
+    const id = parseId(req.params.id);
+    if (!id) {
+        return res.status(400).json({ error: "Invalid booking ID" });
+    }
+
     try {
-        await db.delete(bookings).where(eq(bookings.id, Number(req.params.id)));
-        res.json({ message: "Booking deleted successfully" });
-    } catch (err) {
-        res.status(500).json({ error: "Failed to delete booking" });
+        const deleted = await db
+            .delete(bookings)
+            .where(eq(bookings.id, id))
+            .returning();
+
+        if (!deleted.length) {
+            return res.status(404).json({ error: "Booking not found" });
+        }
+
+        return res.status(200).json({
+            message: "Booking deleted successfully",
+        });
+    } catch (error) {
+        console.error(`DELETE /bookings/${id} error:`, error);
+        return res.status(500).json({ error: "Failed to delete booking" });
     }
 });
 

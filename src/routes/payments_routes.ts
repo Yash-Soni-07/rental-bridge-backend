@@ -8,14 +8,27 @@ const router = Router();
 /**
  * Helper: Validate ID
  */
-const parseId = (idParam: string | string[] | undefined): number | null => {
-    if (!idParam || Array.isArray(idParam)) return null;
+import { parseId } from "../utils/parseId.js";
 
-    const id = Number(idParam);
-    if (!id || isNaN(id)) return null;
+// GET /api/payments/booking/:bookingId — Payments for a booking
+router.get("/booking/:bookingId", async (req: Request, res: Response) => {
+    const bookingId = parseId(req.params.bookingId);
+    if (!bookingId) {
+        return res.status(400).json({ error: "Invalid booking ID" });
+    }
 
-    return id;
-};
+    try {
+        const bookingPayments = await db
+            .select()
+            .from(payments)
+            .where(eq(payments.booking_id, bookingId));
+
+        return res.status(200).json(bookingPayments);
+    } catch (error) {
+        console.error(`GET /payments/booking/${bookingId} error:`, error);
+        return res.status(500).json({ error: "Failed to fetch booking payments" });
+    }
+});
 
 // GET /api/payments — Admin: get all payments
 router.get("/", async (_req: Request, res: Response) => {
@@ -49,26 +62,6 @@ router.get("/:id", async (req: Request, res: Response) => {
     } catch (error) {
         console.error(`GET /payments/${id} error:`, error);
         return res.status(500).json({ error: "Failed to fetch payment" });
-    }
-});
-
-// GET /api/payments/booking/:bookingId — Payments for a booking
-router.get("/booking/:bookingId", async (req: Request, res: Response) => {
-    const bookingId = parseId(req.params.bookingId);
-    if (!bookingId) {
-        return res.status(400).json({ error: "Invalid booking ID" });
-    }
-
-    try {
-        const bookingPayments = await db
-            .select()
-            .from(payments)
-            .where(eq(payments.booking_id, bookingId));
-
-        return res.status(200).json(bookingPayments);
-    } catch (error) {
-        console.error(`GET /payments/booking/${bookingId} error:`, error);
-        return res.status(500).json({ error: "Failed to fetch booking payments" });
     }
 });
 

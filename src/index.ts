@@ -28,9 +28,9 @@ if (!process.env.FRONTEND_URL) {
 
 app.use(
     cors({
-        origin: process.env.FRONTEND_URL || "*", // fallback (non-breaking)
+        origin: process.env.FRONTEND_URL || "http://localhost:3001", // dev fallback
         methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-        credentials: true,
+        credentials: !!process.env.FRONTEND_URL, // only enable with explicit origin
     })
 );
 
@@ -55,8 +55,11 @@ app.get("/", (_req, res) => {
 
 // ─── Global Error Handler (SAFE ADDITION) ───────────────
 
-app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    console.error("Global Error:", err);
+app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error("Global Error:", err.message);
+    if (process.env.NODE_ENV !== "production") {
+            console.error(err.stack);
+        }
     return res.status(500).json({
         error: "Internal Server Error",
     });

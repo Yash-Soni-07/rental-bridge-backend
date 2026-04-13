@@ -8,14 +8,10 @@ const router = Router();
 /**
  * Helper: Validate ID
  */
-const parseId = (idParam: string | string[] | undefined): number | null => {
-    if (!idParam || Array.isArray(idParam)) return null;
+import { parseId } from "../utils/parseId.js";
 
-    const id = Number(idParam);
-    if (!id || isNaN(id)) return null;
-
-    return id;
-};
+// DB Error Handler
+import { isConstraintViolation } from "../utils/dbErrorHandler";
 
 // GET /api/maintenance — Admin: get all requests
 router.get("/", async (_req: Request, res: Response) => {
@@ -25,30 +21,6 @@ router.get("/", async (_req: Request, res: Response) => {
     } catch (error) {
         console.error("GET /maintenance error:", error);
         return res.status(500).json({ error: "Failed to fetch maintenance requests" });
-    }
-});
-
-// GET /api/maintenance/:id — Get single request
-router.get("/:id", async (req: Request, res: Response) => {
-    const id = parseId(req.params.id);
-    if (!id) {
-        return res.status(400).json({ error: "Invalid request ID" });
-    }
-
-    try {
-        const request = await db
-            .select()
-            .from(maintenanceRequests)
-            .where(eq(maintenanceRequests.id, id));
-
-        if (!request.length) {
-            return res.status(404).json({ error: "Request not found" });
-        }
-
-        return res.status(200).json(request[0]);
-    } catch (error) {
-        console.error(`GET /maintenance/${id} error:`, error);
-        return res.status(500).json({ error: "Failed to fetch request" });
     }
 });
 
@@ -89,6 +61,30 @@ router.get("/property/:propertyId", async (req: Request, res: Response) => {
     } catch (error) {
         console.error(`GET /maintenance/property/${propertyId} error:`, error);
         return res.status(500).json({ error: "Failed to fetch property requests" });
+    }
+});
+
+// GET /api/maintenance/:id — Get single request
+router.get("/:id", async (req: Request, res: Response) => {
+    const id = parseId(req.params.id);
+    if (!id) {
+        return res.status(400).json({ error: "Invalid request ID" });
+    }
+
+    try {
+        const request = await db
+            .select()
+            .from(maintenanceRequests)
+            .where(eq(maintenanceRequests.id, id));
+
+        if (!request.length) {
+            return res.status(404).json({ error: "Request not found" });
+        }
+
+        return res.status(200).json(request[0]);
+    } catch (error) {
+        console.error(`GET /maintenance/${id} error:`, error);
+        return res.status(500).json({ error: "Failed to fetch request" });
     }
 });
 
@@ -160,11 +156,17 @@ router.delete("/:id", async (req: Request, res: Response) => {
         return res.status(200).json({
             message: "Maintenance request deleted",
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error(`DELETE /maintenance/${id} error:`, error);
 
-        return res.status(400).json({
-            error: "Cannot delete request due to existing dependencies",
+        if (isConstraintViolation(error)) {
+            return res.status(409).json({
+                error: "Cannot delete request due to existing dependencies",
+            });
+        }
+
+        return res.status(500).json({
+            error: "Failed to delete request",
         });
     }
 });

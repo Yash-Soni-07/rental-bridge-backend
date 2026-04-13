@@ -8,14 +8,10 @@ const router = Router();
 /**
  * Helper: Validate ID
  */
-const parseId = (idParam: string | string[] | undefined): number | null => {
-    if (!idParam || Array.isArray(idParam)) return null;
+import { parseId } from "../utils/parseId.js";
 
-    const id = Number(idParam);
-    if (!id || isNaN(id)) return null;
-
-    return id;
-};
+// DE Error Handler
+import { isConstraintViolation } from "../utils/dbErrorHandler";
 
 // GET /api/applications — Admin: get all applications
 router.get("/", async (_req: Request, res: Response) => {
@@ -25,30 +21,6 @@ router.get("/", async (_req: Request, res: Response) => {
     } catch (error) {
         console.error("GET /applications error:", error);
         return res.status(500).json({ error: "Failed to fetch applications" });
-    }
-});
-
-// GET /api/applications/:id — Get single application
-router.get("/:id", async (req: Request, res: Response) => {
-    const id = parseId(req.params.id);
-    if (!id) {
-        return res.status(400).json({ error: "Invalid application ID" });
-    }
-
-    try {
-        const app = await db
-            .select()
-            .from(applications)
-            .where(eq(applications.id, id));
-
-        if (!app.length) {
-            return res.status(404).json({ error: "Application not found" });
-        }
-
-        return res.status(200).json(app[0]);
-    } catch (error) {
-        console.error(`GET /applications/${id} error:`, error);
-        return res.status(500).json({ error: "Failed to fetch application" });
     }
 });
 
@@ -91,6 +63,31 @@ router.get("/property/:propertyId", async (req: Request, res: Response) => {
         return res.status(500).json({ error: "Failed to fetch property applications" });
     }
 });
+
+// GET /api/applications/:id — Get single application
+router.get("/:id", async (req: Request, res: Response) => {
+    const id = parseId(req.params.id);
+    if (!id) {
+        return res.status(400).json({ error: "Invalid application ID" });
+    }
+
+    try {
+        const app = await db
+            .select()
+            .from(applications)
+            .where(eq(applications.id, id));
+
+        if (!app.length) {
+            return res.status(404).json({ error: "Application not found" });
+        }
+
+        return res.status(200).json(app[0]);
+    } catch (error) {
+        console.error(`GET /applications/${id} error:`, error);
+        return res.status(500).json({ error: "Failed to fetch application" });
+    }
+});
+
 
 // POST /api/applications — Submit application
 router.post("/", async (req: Request, res: Response) => {
@@ -158,12 +155,17 @@ router.delete("/:id", async (req: Request, res: Response) => {
         }
 
         return res.status(200).json({ message: "Application withdrawn" });
-    } catch (error) {
+    } catch (error: any) {
         console.error(`DELETE /applications/${id} error:`, error);
 
-        // 🔥 Important: due to restrict on property/user
-        return res.status(400).json({
-            error: "Cannot delete application due to existing dependencies",
+        if (isConstraintViolation(error)) {
+            return res.status(409).json({
+                error: "Cannot delete application due to existing dependencies",
+            });
+        }
+
+        return res.status(500).json({
+            error: "Failed to delete application",
         });
     }
 });

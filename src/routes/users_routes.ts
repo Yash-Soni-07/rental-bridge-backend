@@ -8,14 +8,10 @@ const router = Router();
 /**
  * Helper: Validate ID param
  */
-const parseId = (idParam: string | string[] | undefined): number | null => {
-    if (!idParam || Array.isArray(idParam)) return null;
+import { parseId } from "../utils/parseId.js";
 
-    const id = Number(idParam);
-    if (!id || isNaN(id)) return null;
-
-    return id;
-};
+// DB Error Handler
+import { isConstraintViolation } from "../utils/dbErrorHandler";
 
 // ─────────────────────────────────────────────
 // GET /api/users — Get all users (Admin only)
@@ -123,12 +119,17 @@ router.delete("/:id", async (req: Request, res: Response) => {
         }
 
         return res.status(200).json({ message: "User deleted successfully" });
-    } catch (error) {
-        // 🔥 Important: handles DB "restrict" errors safely
+    } catch (error: any) {
         console.error(`DELETE /users/${id} error:`, error);
 
-        return res.status(400).json({
-            error: "Cannot delete user with existing dependencies",
+        if (isConstraintViolation(error)) {
+            return res.status(409).json({
+                error: "Cannot delete user due to existing dependencies",
+            });
+        }
+
+        return res.status(500).json({
+            error: "Failed to delete user",
         });
     }
 });

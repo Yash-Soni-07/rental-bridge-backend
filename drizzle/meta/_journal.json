@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1776087480481,
+      "tag": "0000_elite_frank_castle",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1776102177582,
+      "tag": "0001_acoustic_blob",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776108520700,
+      "tag": "0002_bumpy_iron_man",
+      "breakpoints": true
+    }
+  ]
+}

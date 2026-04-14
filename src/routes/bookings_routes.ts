@@ -11,7 +11,7 @@ const router = Router();
 import { parseId } from "../utils/parseId.js";
 
 // DB Error Handler
-import  { isConstraintViolation } from "../utils/dbErrorHandler";
+import  { isConstraintViolation } from "../utils/dbErrorHandler.js";
 
 // GET /api/bookings — Admin: get all bookings
 router.get("/", async (_req: Request, res: Response) => {

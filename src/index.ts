@@ -2,6 +2,7 @@ import express from "express";
 import "dotenv/config";
 import cors from "cors";
 
+// ─── Routers ─────────────────────────────────────────────
 import usersRouter from "./routes/users_routes.js";
 import propertiesRouter from "./routes/properties_routes.js";
 import propertyAssetsRouter from "./routes/property-assets_routes.js";
@@ -10,63 +11,115 @@ import bookingsRouter from "./routes/bookings_routes.js";
 import paymentsRouter from "./routes/payments_routes.js";
 import maintenanceRouter from "./routes/maintenance_routes.js";
 import reviewsRouter from "./routes/reviews_routes.js";
+import authRouter from "./routes/auth_routes.js";
+
+// ─── Auth Middlewares ─────────────────────────────────────
+import { authenticate } from "./middlewares/authenticate.js";
+import { authorizeRole } from "./middlewares/authorizeRole.js";
 
 const app = express();
 
-// ─── Middlewares ─────────────────────────────────────────
-
-// JSON parser
+// ─── Core Middlewares ─────────────────────────────────────
 app.use(express.json());
 
-// ─── CORS ───────────────────────────────────────────────
-
 if (!process.env.FRONTEND_URL) {
-    console.warn(
-        "⚠️ FRONTEND_URL is not defined, CORS may block requests"
-    );
+    console.warn("⚠️ FRONTEND_URL is not defined, CORS may block requests");
 }
 
 app.use(
     cors({
-        origin: process.env.FRONTEND_URL || "http://localhost:3001", // dev fallback
+        origin: process.env.FRONTEND_URL || "http://localhost:3001",
         methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-        credentials: !!process.env.FRONTEND_URL, // only enable with explicit origin
+        credentials: !!process.env.FRONTEND_URL,
     })
 );
 
-// ─── Routes ─────────────────────────────────────────────
+// ─── Public Routes ────────────────────────────────────────
 
-app.use("/api/users", usersRouter);
+// Auth
+app.use("/api/auth", authRouter);
+
+// Public GET endpoints handled inside routers
 app.use("/api/properties", propertiesRouter);
-app.use("/api", propertyAssetsRouter); // images, amenities, property-amenities
-app.use("/api/applications", applicationsRouter);
-app.use("/api/bookings", bookingsRouter);
-app.use("/api/payments", paymentsRouter);
-app.use("/api/maintenance", maintenanceRouter);
 app.use("/api/reviews", reviewsRouter);
+app.use("/api", propertyAssetsRouter);
 
-// ─── Health Check ───────────────────────────────────────
+// ─── Protected Routes ─────────────────────────────────────
 
+// Users — admin only
+app.use(
+    "/api/users",
+    authenticate,
+    authorizeRole("admin"),
+    usersRouter
+);
+
+// Properties — mutations protected
+app.use(
+    "/api/properties",
+    authenticate,
+    authorizeRole("landlord", "admin"),
+    propertiesRouter
+);
+
+// Property Assets — mutations protected
+app.use(
+    "/api",
+    authenticate,
+    authorizeRole("landlord", "admin"),
+    propertyAssetsRouter
+);
+
+// Applications
+app.use(
+    "/api/applications",
+    authenticate,
+    authorizeRole("tenant", "landlord", "admin"),
+    applicationsRouter
+);
+
+// Bookings
+app.use(
+    "/api/bookings",
+    authenticate,
+    authorizeRole("tenant", "landlord", "admin"),
+    bookingsRouter
+);
+
+// Payments
+app.use(
+    "/api/payments",
+    authenticate,
+    authorizeRole("tenant", "landlord", "admin"),
+    paymentsRouter
+);
+
+// Maintenance
+app.use(
+    "/api/maintenance",
+    authenticate,
+    authorizeRole("tenant", "landlord", "admin"),
+    maintenanceRouter
+);
+
+// Reviews (protected actions)
+app.use("/api/reviews", authenticate, reviewsRouter);
+
+// ─── Health Check ─────────────────────────────────────────
 app.get("/", (_req, res) => {
-    return res.status(200).json({
-        message: "Rental Bridge API running ✅",
-    });
+    return res.status(200).json({ message: "Rental Bridge API running ✅" });
 });
 
-// ─── Global Error Handler (SAFE ADDITION) ───────────────
-
+// ─── Global Error Handler ─────────────────────────────────
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     console.error("Global Error:", err.message);
     if (process.env.NODE_ENV !== "production") {
-            console.error(err.stack);
-        }
-    return res.status(500).json({
-        error: "Internal Server Error",
-    });
+        console.error(err.stack);
+    }
+    return res.status(500).json({ error: "Internal Server Error" });
 });
 
-// ─── Server ─────────────────────────────────────────────
-
+// ─── Server ───────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {

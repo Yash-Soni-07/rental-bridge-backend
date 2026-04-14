@@ -1,5 +1,5 @@
 {
-  "id": "ff81d45c-9dcf-4e9c-9da7-47064a639e71",
+  "id": "e7129574-c223-47cb-bd2e-de51ceaf9391",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -30,7 +30,7 @@
           "name": "created_at",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "now()"
         }
       },
@@ -77,7 +77,7 @@
           "type": "application_status",
           "typeSchema": "public",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "'pending'"
         },
         "message": {
@@ -88,7 +88,7 @@
         },
         "monthly_income": {
           "name": "monthly_income",
-          "type": "real",
+          "type": "numeric(12, 2)",
           "primaryKey": false,
           "notNull": true
         },
@@ -120,14 +120,14 @@
           "name": "created_at",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "now()"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "now()"
         }
       },
@@ -143,7 +143,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         },
         "applications_applicant_id_users_id_fk": {
@@ -156,14 +156,19 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "income_positive": {
+          "name": "income_positive",
+          "value": "\"applications\".\"monthly_income\" >= 0"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.bookings": {
@@ -193,7 +198,7 @@
           "type": "booking_status",
           "typeSchema": "public",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "'pending'"
         },
         "start_date": {
@@ -210,19 +215,19 @@
         },
         "monthly_rent": {
           "name": "monthly_rent",
-          "type": "real",
+          "type": "numeric(12, 2)",
           "primaryKey": false,
           "notNull": true
         },
         "security_deposit": {
           "name": "security_deposit",
-          "type": "real",
+          "type": "numeric(12, 2)",
           "primaryKey": false,
           "notNull": true
         },
         "total_amount": {
           "name": "total_amount",
-          "type": "real",
+          "type": "numeric(12, 2)",
           "primaryKey": false,
           "notNull": true
         },
@@ -230,7 +235,7 @@
           "name": "payment_status",
           "type": "varchar(50)",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "'pending'"
         },
         "lease_document": {
@@ -243,14 +248,14 @@
           "name": "created_at",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "now()"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "now()"
         }
       },
@@ -266,7 +271,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         },
         "bookings_tenant_id_users_id_fk": {
@@ -279,14 +284,31 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "booking_dates_valid": {
+          "name": "booking_dates_valid",
+          "value": "\"bookings\".\"end_date\" > \"bookings\".\"start_date\""
+        },
+        "rent_positive": {
+          "name": "rent_positive",
+          "value": "\"bookings\".\"monthly_rent\" >= 0"
+        },
+        "deposit_positive": {
+          "name": "deposit_positive",
+          "value": "\"bookings\".\"security_deposit\" >= 0"
+        },
+        "total_positive": {
+          "name": "total_positive",
+          "value": "\"bookings\".\"total_amount\" >= 0"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.maintenance_requests": {
@@ -327,7 +349,7 @@
           "name": "priority",
           "type": "varchar(20)",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "'medium'"
         },
         "status": {
@@ -339,13 +361,13 @@
         },
         "estimated_cost": {
           "name": "estimated_cost",
-          "type": "real",
+          "type": "numeric(12, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "actual_cost": {
           "name": "actual_cost",
-          "type": "real",
+          "type": "numeric(12, 2)",
           "primaryKey": false,
           "notNull": false
         },
@@ -365,14 +387,14 @@
           "name": "created_at",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "now()"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "now()"
         }
       },
@@ -388,7 +410,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         },
         "maintenance_requests_tenant_id_users_id_fk": {
@@ -401,14 +423,23 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "estimated_cost_positive": {
+          "name": "estimated_cost_positive",
+          "value": "\"maintenance_requests\".\"estimated_cost\" >= 0"
+        },
+        "actual_cost_positive": {
+          "name": "actual_cost_positive",
+          "value": "\"maintenance_requests\".\"actual_cost\" >= 0"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.payments": {
@@ -429,7 +460,7 @@
         },
         "amount": {
           "name": "amount",
-          "type": "real",
+          "type": "numeric(12, 2)",
           "primaryKey": false,
           "notNull": true
         },
@@ -455,7 +486,7 @@
           "name": "status",
           "type": "varchar(50)",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "'pending'"
         },
         "due_date": {
@@ -474,7 +505,7 @@
           "name": "created_at",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "now()"
         }
       },
@@ -490,14 +521,19 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "amount_positive": {
+          "name": "amount_positive",
+          "value": "\"payments\".\"amount\" >= 0"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.properties": {
@@ -592,13 +628,13 @@
         },
         "monthly_rent": {
           "name": "monthly_rent",
-          "type": "real",
+          "type": "numeric(12, 2)",
           "primaryKey": false,
           "notNull": true
         },
         "security_deposit": {
           "name": "security_deposit",
-          "type": "real",
+          "type": "numeric(12, 2)",
           "primaryKey": false,
           "notNull": true
         },
@@ -606,28 +642,28 @@
           "name": "is_furnished",
           "type": "boolean",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": false
         },
         "pets_allowed": {
           "name": "pets_allowed",
           "type": "boolean",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": false
         },
         "smoking_allowed": {
           "name": "smoking_allowed",
           "type": "boolean",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": false
         },
         "parking_available": {
           "name": "parking_available",
           "type": "boolean",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": false
         },
         "status": {
@@ -635,7 +671,7 @@
           "type": "property_status",
           "typeSchema": "public",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "'available'"
         },
         "available_from": {
@@ -661,14 +697,14 @@
           "name": "created_at",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "now()"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "now()"
         }
       },
@@ -684,14 +720,39 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "rent_positive": {
+          "name": "rent_positive",
+          "value": "\"properties\".\"monthly_rent\" >= 0"
+        },
+        "deposit_positive": {
+          "name": "deposit_positive",
+          "value": "\"properties\".\"security_deposit\" >= 0"
+        },
+        "area_positive": {
+          "name": "area_positive",
+          "value": "\"properties\".\"area_sqft\" > 0"
+        },
+        "bedrooms_valid": {
+          "name": "bedrooms_valid",
+          "value": "\"properties\".\"bedrooms\" >= 0"
+        },
+        "bathrooms_valid": {
+          "name": "bathrooms_valid",
+          "value": "\"properties\".\"bathrooms\" >= 0"
+        },
+        "lease_valid": {
+          "name": "lease_valid",
+          "value": "\"properties\".\"lease_duration_months\" > 0"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.property_amenities": {
@@ -717,7 +778,29 @@
           "notNull": true
         }
       },
-      "indexes": {},
+      "indexes": {
+        "unique_property_amenity": {
+          "name": "unique_property_amenity",
+          "columns": [
+            {
+              "expression": "property_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "amenity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "property_amenities_property_id_properties_id_fk": {
           "name": "property_amenities_property_id_properties_id_fk",
@@ -729,7 +812,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         },
         "property_amenities_amenity_id_amenities_id_fk": {
@@ -742,7 +825,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -770,7 +853,7 @@
         },
         "image_url": {
           "name": "image_url",
-          "type": "varchar(255)",
+          "type": "varchar(512)",
           "primaryKey": false,
           "notNull": true
         },
@@ -778,7 +861,7 @@
           "name": "is_primary",
           "type": "boolean",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": false
         },
         "caption": {
@@ -791,11 +874,28 @@
           "name": "created_at",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "unique_primary_image_per_property": {
+          "name": "unique_primary_image_per_property",
+          "columns": [
+            {
+              "expression": "property_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"property_images\".\"is_primary\" = true",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "property_images_property_id_properties_id_fk": {
           "name": "property_images_property_id_properties_id_fk",
@@ -807,7 +907,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -861,14 +961,14 @@
           "name": "is_verified",
           "type": "boolean",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": false
         },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "now()"
         }
       },
@@ -884,7 +984,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         },
         "reviews_reviewer_id_users_id_fk": {
@@ -897,14 +997,19 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "rating_check": {
+          "name": "rating_check",
+          "value": "\"reviews\".\"rating\" >= 1 AND \"reviews\".\"rating\" <= 5"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.users": {
@@ -958,14 +1063,14 @@
           "name": "is_active",
           "type": "boolean",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": true
         },
         "is_verified": {
           "name": "is_verified",
           "type": "boolean",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": false
         },
         "profile_image": {
@@ -982,7 +1087,7 @@
         },
         "date_of_birth": {
           "name": "date_of_birth",
-          "type": "timestamp",
+          "type": "date",
           "primaryKey": false,
           "notNull": false
         },
@@ -990,14 +1095,14 @@
           "name": "created_at",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "now()"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "now()"
         }
       },

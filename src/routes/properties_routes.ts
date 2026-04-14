@@ -8,14 +8,10 @@ const router = Router();
 /**
  * Helper: Validate ID
  */
-const parseId = (idParam: string | string[] | undefined): number | null => {
-    if (!idParam || Array.isArray(idParam)) return null;
+import { parseId } from "../utils/parseId.js";
 
-    const id = Number(idParam);
-    if (!id || isNaN(id)) return null;
-
-    return id;
-};
+// DB Error Handler
+import {isConstraintViolation } from "../utils/dbErrorHandler.js";
 
 // ─────────────────────────────────────────────
 // GET /api/properties — List all properties
@@ -27,6 +23,28 @@ router.get("/", async (_req: Request, res: Response) => {
     } catch (error) {
         console.error("GET /properties error:", error);
         return res.status(500).json({ error: "Failed to fetch properties" });
+    }
+});
+
+// ─────────────────────────────────────────────
+// GET /api/properties/owner/:ownerId — Owner properties
+// ─────────────────────────────────────────────
+router.get("/owner/:ownerId", async (req: Request, res: Response) => {
+    const ownerId = parseId(req.params.ownerId);
+    if (!ownerId) {
+        return res.status(400).json({ error: "Invalid owner ID" });
+    }
+
+    try {
+        const ownerProperties = await db
+            .select()
+            .from(properties)
+            .where(eq(properties.owner_id, ownerId));
+
+        return res.status(200).json(ownerProperties);
+    } catch (error) {
+        console.error(`GET /properties/owner/${ownerId} error:`, error);
+        return res.status(500).json({ error: "Failed to fetch owner properties" });
     }
 });
 
@@ -53,28 +71,6 @@ router.get("/:id", async (req: Request, res: Response) => {
     } catch (error) {
         console.error(`GET /properties/${id} error:`, error);
         return res.status(500).json({ error: "Failed to fetch property" });
-    }
-});
-
-// ─────────────────────────────────────────────
-// GET /api/properties/owner/:ownerId — Owner properties
-// ─────────────────────────────────────────────
-router.get("/owner/:ownerId", async (req: Request, res: Response) => {
-    const ownerId = parseId(req.params.ownerId);
-    if (!ownerId) {
-        return res.status(400).json({ error: "Invalid owner ID" });
-    }
-
-    try {
-        const ownerProperties = await db
-            .select()
-            .from(properties)
-            .where(eq(properties.owner_id, ownerId));
-
-        return res.status(200).json(ownerProperties);
-    } catch (error) {
-        console.error(`GET /properties/owner/${ownerId} error:`, error);
-        return res.status(500).json({ error: "Failed to fetch owner properties" });
     }
 });
 
@@ -152,12 +148,17 @@ router.delete("/:id", async (req: Request, res: Response) => {
         return res.status(200).json({
             message: "Property deleted successfully",
         });
-    } catch (error) {
-        // 🔥 Handles restrict constraint (bookings/applications exist)
+    } catch (error: any) {
         console.error(`DELETE /properties/${id} error:`, error);
 
-        return res.status(400).json({
-            error: "Cannot delete property with existing dependencies",
+        if (isConstraintViolation(error)) {
+            return res.status(409).json({
+                error: "Cannot delete property due to existing dependencies",
+            });
+        }
+
+        return res.status(500).json({
+            error: "Failed to delete property",
         });
     }
 });

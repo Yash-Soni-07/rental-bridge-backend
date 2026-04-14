@@ -8,14 +8,10 @@ const router = Router();
 /**
  * Helper: Validate ID
  */
-const parseId = (idParam: string | string[] | undefined): number | null => {
-    if (!idParam || Array.isArray(idParam)) return null;
+import { parseId } from "../utils/parseId.js";
 
-    const id = Number(idParam);
-    if (!id || isNaN(id)) return null;
-
-    return id;
-};
+// DB Error Handler
+import  { isConstraintViolation } from "../utils/dbErrorHandler.js";
 
 // GET /api/bookings — Admin: get all bookings
 router.get("/", async (_req: Request, res: Response) => {
@@ -25,30 +21,6 @@ router.get("/", async (_req: Request, res: Response) => {
     } catch (error) {
         console.error("GET /bookings error:", error);
         return res.status(500).json({ error: "Failed to fetch bookings" });
-    }
-});
-
-// GET /api/bookings/:id — Get single booking
-router.get("/:id", async (req: Request, res: Response) => {
-    const id = parseId(req.params.id);
-    if (!id) {
-        return res.status(400).json({ error: "Invalid booking ID" });
-    }
-
-    try {
-        const booking = await db
-            .select()
-            .from(bookings)
-            .where(eq(bookings.id, id));
-
-        if (!booking.length) {
-            return res.status(404).json({ error: "Booking not found" });
-        }
-
-        return res.status(200).json(booking[0]);
-    } catch (error) {
-        console.error(`GET /bookings/${id} error:`, error);
-        return res.status(500).json({ error: "Failed to fetch booking" });
     }
 });
 
@@ -89,6 +61,30 @@ router.get("/property/:propertyId", async (req: Request, res: Response) => {
     } catch (error) {
         console.error(`GET /bookings/property/${propertyId} error:`, error);
         return res.status(500).json({ error: "Failed to fetch property bookings" });
+    }
+});
+
+// GET /api/bookings/:id — Get single booking
+router.get("/:id", async (req: Request, res: Response) => {
+    const id = parseId(req.params.id);
+    if (!id) {
+        return res.status(400).json({ error: "Invalid booking ID" });
+    }
+
+    try {
+        const booking = await db
+            .select()
+            .from(bookings)
+            .where(eq(bookings.id, id));
+
+        if (!booking.length) {
+            return res.status(404).json({ error: "Booking not found" });
+        }
+
+        return res.status(200).json(booking[0]);
+    } catch (error) {
+        console.error(`GET /bookings/${id} error:`, error);
+        return res.status(500).json({ error: "Failed to fetch booking" });
     }
 });
 
@@ -160,9 +156,18 @@ router.delete("/:id", async (req: Request, res: Response) => {
         return res.status(200).json({
             message: "Booking deleted successfully",
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error(`DELETE /bookings/${id} error:`, error);
-        return res.status(500).json({ error: "Failed to delete booking" });
+
+        if (isConstraintViolation(error)) {
+            return res.status(409).json({
+                error: "Cannot delete booking due to existing dependencies",
+            });
+        }
+
+        return res.status(500).json({
+            error: "Failed to delete booking",
+        });
     }
 });
 

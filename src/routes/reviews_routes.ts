@@ -8,14 +8,10 @@ const router = Router();
 /**
  * Helper: Validate ID
  */
-const parseId = (idParam: string | string[] | undefined): number | null => {
-    if (!idParam || Array.isArray(idParam)) return null;
+import { parseId } from "../utils/parseId.js";
 
-    const id = Number(idParam);
-    if (!id || isNaN(id)) return null;
-
-    return id;
-};
+// DB Error handler
+import { isConstraintViolation } from "../utils/dbErrorHandler.js";
 
 // GET /api/reviews — Admin: get all reviews
 router.get("/", async (_req: Request, res: Response) => {
@@ -136,11 +132,17 @@ router.delete("/:id", async (req: Request, res: Response) => {
         return res.status(200).json({
             message: "Review deleted successfully",
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error(`DELETE /reviews/${id} error:`, error);
 
-        return res.status(400).json({
-            error: "Cannot delete review due to existing dependencies",
+        if (isConstraintViolation(error)) {
+            return res.status(409).json({
+                error: "Cannot delete review due to existing dependencies",
+            });
+        }
+
+        return res.status(500).json({
+            error: "Failed to delete review",
         });
     }
 });

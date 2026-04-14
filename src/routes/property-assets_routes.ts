@@ -8,14 +8,10 @@ const router = Router();
 /**
  * Helper: Validate ID
  */
-const parseId = (idParam: string | string[] | undefined): number | null => {
-    if (!idParam || Array.isArray(idParam)) return null;
+import { parseId } from "../utils/parseId.js";
 
-    const id = Number(idParam);
-    if (!id || isNaN(id)) return null;
-
-    return id;
-};
+// DB Error handler
+import { isConstraintViolation } from "../utils/dbErrorHandler.js";
 
 // ─── Property Images ─────────────────────────────
 
@@ -76,9 +72,18 @@ router.delete("/images/:id", async (req: Request, res: Response) => {
         }
 
         return res.status(200).json({ message: "Image deleted successfully" });
-    } catch (error) {
+    } catch (error: any) {
         console.error(`DELETE /images/${id} error:`, error);
-        return res.status(500).json({ error: "Failed to delete image" });
+
+        if (isConstraintViolation(error)) {
+            return res.status(409).json({
+                error: "Cannot delete image due to existing dependencies",
+            });
+        }
+
+        return res.status(500).json({
+            error: "Failed to delete image",
+        });
     }
 });
 
@@ -132,11 +137,17 @@ router.delete("/amenities/:id", async (req: Request, res: Response) => {
         }
 
         return res.status(200).json({ message: "Amenity deleted successfully" });
-    } catch (error) {
+    } catch (error: any) {
         console.error(`DELETE /amenities/${id} error:`, error);
 
-        return res.status(400).json({
-            error: "Cannot delete amenity due to existing dependencies",
+        if (isConstraintViolation(error)) {
+            return res.status(409).json({
+                error: "Cannot delete amenity due to existing dependencies",
+            });
+        }
+
+        return res.status(500).json({
+            error: "Failed to delete amenities",
         });
     }
 });
@@ -202,9 +213,18 @@ router.delete("/property-amenities/:id", async (req: Request, res: Response) => 
         return res.status(200).json({
             message: "Amenity removed from property",
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error(`DELETE /property-amenities/${id} error:`, error);
-        return res.status(500).json({ error: "Failed to remove amenity" });
+
+        if (isConstraintViolation(error)) {
+            return res.status(409).json({
+                error: "Cannot delete property-amenity due to existing dependencies",
+            });
+        }
+
+        return res.status(500).json({
+            error: "Failed to delete property-amenity",
+        });
     }
 });
 

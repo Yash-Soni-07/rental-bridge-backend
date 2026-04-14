@@ -175,15 +175,3 @@ ALTER TABLE "reviews" ADD CONSTRAINT "reviews_property_id_properties_id_fk" FORE
 ALTER TABLE "reviews" ADD CONSTRAINT "reviews_reviewer_id_users_id_fk" FOREIGN KEY ("reviewer_id") REFERENCES "public"."users"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 CREATE UNIQUE INDEX "unique_property_amenity" ON "property_amenities" USING btree ("property_id","amenity_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "unique_primary_image_per_property" ON "property_images" USING btree ("property_id") WHERE "property_images"."is_primary" = true;
-
--- Required for exclusion constraint
-CREATE EXTENSION IF NOT EXISTS btree_gist;
-
--- Prevent overlapping bookings per property
-ALTER TABLE bookings
-    ADD CONSTRAINT bookings_no_overlap
-    EXCLUDE USING GIST (
-  property_id WITH =,
-  tstzrange(start_date, end_date) WITH &&
-)
-WHERE (status <> 'cancelled');

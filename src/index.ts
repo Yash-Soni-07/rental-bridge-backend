@@ -42,7 +42,7 @@ app.use("/api/auth", authRouter);
 // Public GET endpoints handled inside routers
 app.use("/api/properties", propertiesRouter);
 app.use("/api/reviews", reviewsRouter);
-app.use("/api", propertyAssetsRouter);
+app.use("/api/property-assets", propertyAssetsRouter);
 
 // ─── Protected Routes ─────────────────────────────────────
 
@@ -64,7 +64,7 @@ app.use(
 
 // Property Assets — mutations protected
 app.use(
-    "/api",
+    "/api/property-assets",
     authenticate,
     authorizeRole("landlord", "admin"),
     propertyAssetsRouter

@@ -2,6 +2,8 @@ import { Router, Request, Response } from "express";
 import { db } from "../db/index.js";
 import { maintenanceRequests } from "../db/schema/app.js";
 import { eq } from "drizzle-orm";
+import { authenticate } from "../middlewares/authenticate.js";
+import { verifyOwnership } from "../middlewares/verifyOwnership.js";
 
 const router = Router();
 
@@ -25,7 +27,7 @@ router.get("/", async (_req: Request, res: Response) => {
 });
 
 // GET /api/maintenance/tenant/:tenantId — Tenant: my requests
-router.get("/tenant/:tenantId", async (req: Request, res: Response) => {
+router.get("/tenant/:tenantId", authenticate, verifyOwnership("tenantId"), async (req: Request, res: Response) => {
     const tenantId = parseId(req.params.tenantId);
     if (!tenantId) {
         return res.status(400).json({ error: "Invalid tenant ID" });

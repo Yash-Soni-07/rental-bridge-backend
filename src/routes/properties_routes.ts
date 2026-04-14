@@ -2,6 +2,8 @@ import { Router, Request, Response } from "express";
 import { db } from "../db/index.js";
 import { properties } from "../db/schema/app.js";
 import { eq } from "drizzle-orm";
+import { authenticate } from "../middlewares/authenticate.js";
+import { verifyOwnership } from "../middlewares/verifyOwnership.js";
 
 const router = Router();
 
@@ -29,7 +31,7 @@ router.get("/", async (_req: Request, res: Response) => {
 // ─────────────────────────────────────────────
 // GET /api/properties/owner/:ownerId — Owner properties
 // ─────────────────────────────────────────────
-router.get("/owner/:ownerId", async (req: Request, res: Response) => {
+router.get("/owner/:ownerId", authenticate, verifyOwnership("ownerId"), async (req: Request, res: Response) => {
     const ownerId = parseId(req.params.ownerId);
     if (!ownerId) {
         return res.status(400).json({ error: "Invalid owner ID" });
@@ -85,7 +87,10 @@ router.post("/", async (req: Request, res: Response) => {
 
         const newProperty = await db
             .insert(properties)
-            .values(req.body)
+            .values({
+                ...req.body,
+                available_from: new Date(req.body.available_from),
+            })
             .returning();
 
         return res.status(201).json(newProperty[0]);

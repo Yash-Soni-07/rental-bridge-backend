@@ -2,6 +2,8 @@ import { Router, Request, Response } from "express";
 import { db } from "../db/index.js";
 import { bookings } from "../db/schema/app.js";
 import { eq } from "drizzle-orm";
+import { authenticate } from "../middlewares/authenticate.js";
+import { verifyOwnership } from "../middlewares/verifyOwnership.js";
 
 const router = Router();
 
@@ -25,7 +27,7 @@ router.get("/", async (_req: Request, res: Response) => {
 });
 
 // GET /api/bookings/tenant/:tenantId — Tenant: my bookings
-router.get("/tenant/:tenantId", async (req: Request, res: Response) => {
+router.get("/tenant/:tenantId", authenticate, verifyOwnership("tenantId"), async (req: Request, res: Response) => {
     const tenantId = parseId(req.params.tenantId);
     if (!tenantId) {
         return res.status(400).json({ error: "Invalid tenant ID" });
@@ -97,7 +99,11 @@ router.post("/", async (req: Request, res: Response) => {
 
         const newBooking = await db
             .insert(bookings)
-            .values(req.body)
+            .values({
+                ...req.body,
+                start_date: new Date(req.body.start_date),
+                end_date: new Date(req.body.end_date),
+            })
             .returning();
 
         return res.status(201).json(newBooking[0]);

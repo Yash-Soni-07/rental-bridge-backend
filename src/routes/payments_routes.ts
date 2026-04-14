@@ -74,7 +74,11 @@ router.post("/", async (req: Request, res: Response) => {
 
         const newPayment = await db
             .insert(payments)
-            .values(req.body)
+            .values({
+                ...req.body,
+                due_date: new Date(req.body.due_date),
+                paid_date: req.body.paid_date ? new Date(req.body.paid_date) : null,
+            })
             .returning();
 
         return res.status(201).json(newPayment[0]);

@@ -72,12 +72,31 @@ router.post("/", async (req: Request, res: Response) => {
             return res.status(400).json({ error: "Request body is required" });
         }
 
+        // Validate and parse due_date
+        if (!req.body.due_date) {
+            return res.status(400).json({ error: "due_date is required" });
+        }
+
+        const due_date = new Date(req.body.due_date);
+        if (isNaN(due_date.getTime())) {
+            return res.status(400).json({ error: "Invalid due_date" });
+        }
+
+        // Validate and parse paid_date if provided
+        let paid_date = null;
+        if (req.body.paid_date) {
+            paid_date = new Date(req.body.paid_date);
+            if (isNaN(paid_date.getTime())) {
+                return res.status(400).json({ error: "Invalid paid_date" });
+            }
+        }
+
         const newPayment = await db
             .insert(payments)
             .values({
                 ...req.body,
-                due_date: new Date(req.body.due_date),
-                paid_date: req.body.paid_date ? new Date(req.body.paid_date) : null,
+                due_date: due_date,
+                paid_date: paid_date,
             })
             .returning();
 

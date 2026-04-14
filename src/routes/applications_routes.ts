@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { db } from "../db/index.js";
 import { applications, properties } from "../db/schema/app.js";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { authenticate } from "../middlewares/authenticate.js";
 import { verifyOwnership } from "../middlewares/verifyOwnership.js";
 
@@ -137,11 +137,40 @@ router.post("/", authenticate, async (req: Request, res: Response) => {
             return res.status(400).json({ error: "Request body is required" });
         }
 
+        if (!req.body.move_in_date) {
+            return res.status(400).json({ error: "move_in_date is required" });
+        }
+
+        const parsedMoveInDate = new Date(req.body.move_in_date);
+        if (isNaN(parsedMoveInDate.getTime())) {
+            return res.status(400).json({ error: "move_in_date is invalid" });
+        }
+
+        const property_id = parseId(req.body.property_id);
+        if (!property_id) {
+            return res.status(400).json({ error: "Invalid property ID" });
+        }
+
+        if (!req.body.monthly_income) {
+            return res.status(400).json({ error: "monthly_income is required" });
+        }
+
+        if (!req.body.employment_status) {
+            return res.status(400).json({ error: "employment_status is required" });
+        }
+
+        const unit_id = req.body.unit_id !== undefined ? parseId(req.body.unit_id) : undefined;
+
         const newApp = await db
             .insert(applications)
             .values({
-                ...req.body,
-                move_in_date: new Date(req.body.move_in_date),
+                property_id,
+                ...(unit_id !== undefined && { unit_id }),
+                applicant_id: req.user!.id,
+                move_in_date: parsedMoveInDate,
+                monthly_income: req.body.monthly_income,
+                employment_status: req.body.employment_status,
+                ...(req.body.references !== undefined && { references: req.body.references }),
             })
             .returning();
 
@@ -164,34 +193,39 @@ router.put("/:id", authenticate, async (req: Request, res: Response) => {
             return res.status(400).json({ error: "Request body is required" });
         }
 
-        const existing = await db
-            .select()
-            .from(applications)
-            .where(eq(applications.id, id));
+        const allowedFields: Record<string, unknown> = {};
+        if (req.body.status !== undefined) allowedFields.status = req.body.status;
+        if (req.body.notes !== undefined) allowedFields.notes = req.body.notes;
+        if (req.body.move_in_date !== undefined) {
+            const parsedMoveInDate = new Date(req.body.move_in_date);
+            if (isNaN(parsedMoveInDate.getTime())) {
+                return res.status(400).json({ error: "move_in_date is invalid" });
+            }
+            allowedFields.move_in_date = parsedMoveInDate;
+        }
+        if (req.body.monthly_income !== undefined) allowedFields.monthly_income = req.body.monthly_income;
+        if (req.body.employment_status !== undefined) allowedFields.employment_status = req.body.employment_status;
+        if (req.body.references !== undefined) allowedFields.references = req.body.references;
 
-        if (!existing.length) {
-            return res.status(404).json({ error: "Application not found" });
+        if (Object.keys(allowedFields).length === 0) {
+            return res.status(400).json({ error: "No updatable fields provided" });
         }
 
-        const application = existing[0];
-
-        // 🔒 Ownership check
-        if (!application) {
-            return res.status(404).json({ error: "Application not found" });
-        }
-
-        if (
-            req.user?.role !== "admin" &&
-            application.applicant_id !== req.user?.id
-        ) {
-            return res.status(403).json({ error: "Forbidden: Not your application" });
-        }
+        // 🔒 Ownership folded atomically into the WHERE predicate (eliminates TOCTOU)
+        const whereClause =
+            req.user?.role === "admin"
+                ? eq(applications.id, id)
+                : and(eq(applications.id, id), eq(applications.applicant_id, req.user!.id));
 
         const updated = await db
             .update(applications)
-            .set({ ...req.body, updated_at: new Date() })
-            .where(eq(applications.id, id))
+            .set({ ...allowedFields, updated_at: new Date() })
+            .where(whereClause)
             .returning();
+
+        if (!updated.length) {
+            return res.status(404).json({ error: "Application not found" });
+        }
 
         return res.status(200).json(updated[0]);
     } catch (error) {
@@ -208,33 +242,20 @@ router.delete("/:id", authenticate, async (req: Request, res: Response) => {
     }
 
     try {
-        const existing = await db
-            .select()
-            .from(applications)
-            .where(eq(applications.id, id));
-
-        if (!existing.length) {
-            return res.status(404).json({ error: "Application not found" });
-        }
-
-        const application = existing[0];
-
-        // 🔒 Ownership check
-        if (!application) {
-            return res.status(404).json({ error: "Application not found" });
-        }
-
-        if (
-            req.user?.role !== "admin" &&
-            application.applicant_id !== req.user?.id
-        ) {
-            return res.status(403).json({ error: "Forbidden: Not your application" });
-        }
+        // 🔒 Ownership folded atomically into the WHERE predicate (eliminates TOCTOU)
+        const whereClause =
+            req.user?.role === "admin"
+                ? eq(applications.id, id)
+                : and(eq(applications.id, id), eq(applications.applicant_id, req.user!.id));
 
         const deleted = await db
             .delete(applications)
-            .where(eq(applications.id, id))
+            .where(whereClause)
             .returning();
+
+        if (!deleted.length) {
+            return res.status(404).json({ error: "Application not found" });
+        }
 
         return res.status(200).json({ message: "Application withdrawn" });
     } catch (error: any) {

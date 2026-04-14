@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { db } from "../db/index.js";
 import { bookings } from "../db/schema/app.js";
-import { eq } from "drizzle-orm";
+import { and, eq, lt, gt } from "drizzle-orm";
 import { authenticate } from "../middlewares/authenticate.js";
 import { verifyOwnership } from "../middlewares/verifyOwnership.js";
 
@@ -97,17 +97,71 @@ router.post("/", async (req: Request, res: Response) => {
             return res.status(400).json({ error: "Request body is required" });
         }
 
-        const newBooking = await db
-            .insert(bookings)
-            .values({
-                ...req.body,
-                start_date: new Date(req.body.start_date),
-                end_date: new Date(req.body.end_date),
-            })
-            .returning();
+        if (!req.body.start_date) {
+            return res.status(400).json({ error: "start_date is required" });
+        }
+        if (!req.body.end_date) {
+            return res.status(400).json({ error: "end_date is required" });
+        }
 
-        return res.status(201).json(newBooking[0]);
-    } catch (error) {
+        const start_date = new Date(req.body.start_date);
+        const end_date = new Date(req.body.end_date);
+
+        if (isNaN(start_date.getTime())) {
+            return res.status(400).json({ error: "start_date is invalid" });
+        }
+        if (isNaN(end_date.getTime())) {
+            return res.status(400).json({ error: "end_date is invalid" });
+        }
+
+        const property_id = parseId(req.body.property_id);
+        if (!property_id) {
+            return res.status(400).json({ error: "Invalid property ID" });
+        }
+
+        // 🔒 Transactional overlap guard — serializable isolation prevents
+        //    concurrent inserts from racing past this check simultaneously.
+        const newBooking = await db.transaction(async (tx) => {
+            // Allen interval overlap: existing.start_date < req.end_date AND existing.end_date > req.start_date
+            const overlapping = await tx
+                .select({ id: bookings.id })
+                .from(bookings)
+                .where(
+                    and(
+                        eq(bookings.property_id, property_id),
+                        lt(bookings.start_date, end_date),
+                        gt(bookings.end_date, start_date),
+                    )
+                )
+                .for("update");
+
+            if (overlapping.length > 0) {
+                throw Object.assign(new Error("Booking dates overlap with an existing booking"), { code: "OVERLAP" });
+            }
+
+            const [created] = await tx
+                .insert(bookings)
+                .values({
+                    property_id,
+                    tenant_id: req.body.tenant_id,
+                    start_date,
+                    end_date,
+                    monthly_rent: req.body.monthly_rent,
+                    security_deposit: req.body.security_deposit,
+                    total_amount: req.body.total_amount,
+                    ...(req.body.payment_status !== undefined && { payment_status: req.body.payment_status }),
+                    ...(req.body.lease_document !== undefined && { lease_document: req.body.lease_document }),
+                })
+                .returning();
+
+            return created;
+        }, { isolationLevel: "serializable" });
+
+        return res.status(201).json(newBooking);
+    } catch (error: any) {
+        if (error?.code === "OVERLAP") {
+            return res.status(409).json({ error: "Booking dates overlap with an existing booking for this property" });
+        }
         console.error("POST /bookings error:", error);
         return res.status(500).json({ error: "Failed to create booking" });
     }

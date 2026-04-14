@@ -39,11 +39,6 @@ app.use(
 // Auth
 app.use("/api/auth", authRouter);
 
-// Public GET endpoints handled inside routers
-app.use("/api/properties", propertiesRouter);
-app.use("/api/reviews", reviewsRouter);
-app.use("/api", propertyAssetsRouter);
-
 // ─── Protected Routes ─────────────────────────────────────
 
 // Users — admin only
@@ -54,19 +49,15 @@ app.use(
     usersRouter
 );
 
-// Properties — mutations protected
+// Properties — GET handlers inside router are public, mutations protected via authenticate in router
 app.use(
     "/api/properties",
-    authenticate,
-    authorizeRole("landlord", "admin"),
     propertiesRouter
 );
 
-// Property Assets — mutations protected
+// Property Assets — mutations protected via authenticate in router
 app.use(
-    "/api",
-    authenticate,
-    authorizeRole("landlord", "admin"),
+    "/api/property-assets",
     propertyAssetsRouter
 );
 
@@ -102,8 +93,8 @@ app.use(
     maintenanceRouter
 );
 
-// Reviews (protected actions)
-app.use("/api/reviews", authenticate, reviewsRouter);
+// Reviews
+app.use("/api/reviews", reviewsRouter);
 
 // ─── Health Check ─────────────────────────────────────────
 app.get("/", (_req, res) => {

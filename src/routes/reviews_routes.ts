@@ -2,6 +2,8 @@ import { Router, Request, Response } from "express";
 import { db } from "../db/index.js";
 import { reviews } from "../db/schema/app.js";
 import { eq } from "drizzle-orm";
+import { authenticate } from "../middlewares/authenticate.js";
+import { verifyOwnership } from "../middlewares/verifyOwnership.js";
 
 const router = Router();
 
@@ -45,7 +47,7 @@ router.get("/property/:propertyId", async (req: Request, res: Response) => {
 });
 
 // GET /api/reviews/reviewer/:reviewerId — Reviews by user
-router.get("/reviewer/:reviewerId", async (req: Request, res: Response) => {
+router.get("/reviewer/:reviewerId", authenticate, verifyOwnership("reviewerId"), async (req: Request, res: Response) => {
     const reviewerId = parseId(req.params.reviewerId);
     if (!reviewerId) {
         return res.status(400).json({ error: "Invalid reviewer ID" });

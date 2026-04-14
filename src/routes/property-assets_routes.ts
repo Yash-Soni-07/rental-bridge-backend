@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import { db } from "../db/index.js";
 import { propertyImages, amenities, propertyAmenities } from "../db/schema/app.js";
 import { eq } from "drizzle-orm";
+import { authenticate } from "../middlewares/authenticate.js";
 
 const router = Router();
 
@@ -36,7 +37,7 @@ router.get("/images/:propertyId", async (req: Request, res: Response) => {
 });
 
 // POST /api/property-images
-router.post("/images", async (req: Request, res: Response) => {
+router.post("/images", authenticate, async (req: Request, res: Response) => {
     try {
         if (!req.body || Object.keys(req.body).length === 0) {
             return res.status(400).json({ error: "Request body is required" });
@@ -55,7 +56,7 @@ router.post("/images", async (req: Request, res: Response) => {
 });
 
 // DELETE /api/property-images/:id
-router.delete("/images/:id", async (req: Request, res: Response) => {
+router.delete("/images/:id", authenticate, async (req: Request, res: Response) => {
     const id = parseId(req.params.id);
     if (!id) {
         return res.status(400).json({ error: "Invalid image ID" });
@@ -101,7 +102,7 @@ router.get("/amenities", async (_req: Request, res: Response) => {
 });
 
 // POST /api/amenities
-router.post("/amenities", async (req: Request, res: Response) => {
+router.post("/amenities", authenticate, async (req: Request, res: Response) => {
     try {
         if (!req.body || Object.keys(req.body).length === 0) {
             return res.status(400).json({ error: "Request body is required" });
@@ -120,7 +121,7 @@ router.post("/amenities", async (req: Request, res: Response) => {
 });
 
 // DELETE /api/amenities/:id
-router.delete("/amenities/:id", async (req: Request, res: Response) => {
+router.delete("/amenities/:id", authenticate, async (req: Request, res: Response) => {
     const id = parseId(req.params.id);
     if (!id) {
         return res.status(400).json({ error: "Invalid amenity ID" });
@@ -175,7 +176,7 @@ router.get("/property-amenities/:propertyId", async (req: Request, res: Response
 });
 
 // POST /api/property-amenities
-router.post("/property-amenities", async (req: Request, res: Response) => {
+router.post("/property-amenities", authenticate, async (req: Request, res: Response) => {
     try {
         if (!req.body || Object.keys(req.body).length === 0) {
             return res.status(400).json({ error: "Request body is required" });
@@ -194,7 +195,7 @@ router.post("/property-amenities", async (req: Request, res: Response) => {
 });
 
 // DELETE /api/property-amenities/:id
-router.delete("/property-amenities/:id", async (req: Request, res: Response) => {
+router.delete("/property-amenities/:id", authenticate, async (req: Request, res: Response) => {
     const id = parseId(req.params.id);
     if (!id) {
         return res.status(400).json({ error: "Invalid property amenity ID" });

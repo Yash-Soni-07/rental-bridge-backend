@@ -159,7 +159,15 @@ router.post("/", authenticate, async (req: Request, res: Response) => {
             return res.status(400).json({ error: "employment_status is required" });
         }
 
-        const unit_id = req.body.unit_id !== undefined ? parseId(req.body.unit_id) : undefined;
+        // Validate unit_id if provided
+        let unit_id = undefined;
+        if (req.body.unit_id !== undefined) {
+            const parsedUnitId = parseId(req.body.unit_id);
+            if (parsedUnitId === null) {
+                return res.status(400).json({ error: "Invalid unit_id" });
+            }
+            unit_id = parsedUnitId;
+        }
 
         const newApp = await db
             .insert(applications)

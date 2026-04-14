@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { db } from "../db/index.js";
 import { bookings } from "../db/schema/app.js";
-import { and, eq, lt, gt } from "drizzle-orm";
+import { and, eq, lt, gt, ne } from "drizzle-orm";
 import { authenticate } from "../middlewares/authenticate.js";
 import { verifyOwnership } from "../middlewares/verifyOwnership.js";
 
@@ -123,12 +123,14 @@ router.post("/", async (req: Request, res: Response) => {
         //    concurrent inserts from racing past this check simultaneously.
         const newBooking = await db.transaction(async (tx) => {
             // Allen interval overlap: existing.start_date < req.end_date AND existing.end_date > req.start_date
+            // Exclude cancelled bookings from overlap check to match DB EXCLUDE constraint
             const overlapping = await tx
                 .select({ id: bookings.id })
                 .from(bookings)
                 .where(
                     and(
                         eq(bookings.property_id, property_id),
+                        ne(bookings.status, 'cancelled'),
                         lt(bookings.start_date, end_date),
                         gt(bookings.end_date, start_date),
                     )

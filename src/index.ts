@@ -22,15 +22,34 @@ const app = express();
 // ─── Core Middlewares ─────────────────────────────────────
 app.use(express.json());
 
-if (!process.env.FRONTEND_URL) {
-    console.warn("⚠️ FRONTEND_URL is not defined, CORS may block requests");
+// Create a list of allowed websites
+const allowedOrigins = [
+    "http://localhost:3001",
+    "http://localhost:5173",
+    "https://rental-bridge-frontend.vercel.app",
+    "https://rental-bridge-frontend-66yyby3te-yash-soni-07s-projects.vercel.app"
+];
+
+// If you have a FRONTEND_URL in Render env, add it to the list too
+if (process.env.FRONTEND_URL) {
+    allowedOrigins.push(process.env.FRONTEND_URL);
 }
 
 app.use(
     cors({
-        origin: process.env.FRONTEND_URL || "http://localhost:3001" || "https://rental-bridge-frontend.vercel.app" || "https://rental-bridge-frontend-66yyby3te-yash-soni-07s-projects.vercel.app",
-        methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-        credentials: !!process.env.FRONTEND_URL,
+        origin: (origin, callback) => {
+            // Allow requests with no origin (like mobile apps or curl)
+            if (!origin) return callback(null, true);
+
+            if (allowedOrigins.includes(origin)) {
+                callback(null, true);
+            } else {
+                console.error(`🚫 CORS blocked for origin: ${origin}`);
+                callback(new Error("Not allowed by CORS"));
+            }
+        },
+        methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+        credentials: true, // Always true to allow cookies/auth headers
     })
 );
 

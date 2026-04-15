@@ -22,36 +22,35 @@ const app = express();
 // ─── Core Middlewares ─────────────────────────────────────
 app.use(express.json());
 
-// Create a list of allowed websites
-const allowedOrigins = [
-    "http://localhost:3001",
-    "http://localhost:5173",
-    "https://rental-bridge-frontend.vercel.app",
-    "https://rental-bridge-frontend-66yyby3te-yash-soni-07s-projects.vercel.app"
-];
-
-// If you have a FRONTEND_URL in Render env, add it to the list too
-if (process.env.FRONTEND_URL) {
-    allowedOrigins.push(process.env.FRONTEND_URL);
+if (!process.env.FRONTEND_URL) {
+    console.warn("⚠️ FRONTEND_URL is not defined, CORS may block requests");
 }
 
 app.use(
     cors({
         origin: (origin, callback) => {
-            // Allow requests with no origin (like mobile apps or curl)
-            if (!origin) return callback(null, true);
+            // 1. Allow local development
+            const localOrigins = ["http://localhost:3001", "http://localhost:5173"];
 
-            if (allowedOrigins.includes(origin)) {
+            // 2. Allow your specific Vercel project (including all preview branches)
+            // This regex checks if the origin ends with 'vercel.app'
+            const isVercel = origin && origin.endsWith(".vercel.app");
+
+            if (!origin || localOrigins.includes(origin) || isVercel) {
                 callback(null, true);
             } else {
-                console.error(`🚫 CORS blocked for origin: ${origin}`);
+                console.error(`🚫 CORS blocked for: ${origin}`);
                 callback(new Error("Not allowed by CORS"));
             }
         },
         methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-        credentials: true, // Always true to allow cookies/auth headers
+        credentials: true,
+        allowedHeaders: ["Content-Type", "Authorization"]
     })
 );
+
+// Add this immediately after the cors block to handle "Preflight" requests
+app.options("*", cors());
 
 // ─── Public Routes ────────────────────────────────────────
 

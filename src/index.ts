@@ -50,7 +50,7 @@ app.use(
 );
 
 // Add this immediately after the cors block to handle "Preflight" requests
-app.options("*", cors());
+app.options("/*", cors());
 
 // ─── Public Routes ────────────────────────────────────────
 

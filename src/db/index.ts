@@ -13,9 +13,10 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 const pool = new Pool({
     connectionString: databaseUrl,
-    ssl: isProduction
-        ? { rejectUnauthorized: true }  // Production: validate certificate
-        : { rejectUnauthorized: false }, // Development: accept self-signed certs
+    // Set rejectUnauthorized to false to allow Supabase's certificate
+    ssl: {
+        rejectUnauthorized: false,
+    },
 });
 
 export const db = drizzle(pool);

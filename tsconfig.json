@@ -6,10 +6,14 @@
 
     /* Node ESM */
     "module": "ES2022",
-    "moduleResolution": "node",
+    /* UPDATE: Changed from "node" to "NodeNext" to resolve deprecation and support modern ESM */
+    "moduleResolution": "bundler",
+    /* UPDATE: Silences the deprecation warning for moduleResolution */
+    "ignoreDeprecations": "6.0",
 
     /* Project structure */
-    "rootDir": "src",
+    /* UPDATE: Changed from "src" to "./" so drizzle.config.ts (in root) is valid */
+    "rootDir": "./",
     "outDir": "dist",
 
     /* Type safety */

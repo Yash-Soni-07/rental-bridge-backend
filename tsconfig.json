@@ -1,37 +1,19 @@
 {
   "compilerOptions": {
-    /* Language & runtime */
     "target": "ES2022",
     "lib": ["ES2022"],
-
-    /* Node ESM */
     "module": "ES2022",
-    /* UPDATE: Changed from "node" to "NodeNext" to resolve deprecation and support modern ESM */
-    "moduleResolution": "bundler",
-    /* UPDATE: Silences the deprecation warning for moduleResolution */
+    "moduleResolution": "NodeNext",
     "ignoreDeprecations": "6.0",
-
-    /* Project structure */
-    /* UPDATE: Changed from "src" to "./" so drizzle.config.ts (in root) is valid */
     "rootDir": "./",
     "outDir": "dist",
-
-    /* Type safety */
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
-
-    /* Interop & correctness */
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-
-    /* Build output */
     "sourceMap": true,
-
-    /* Performance */
     "skipLibCheck": true,
-
-    /* Environment types */
     "types": ["node"]
   },
   "include": [

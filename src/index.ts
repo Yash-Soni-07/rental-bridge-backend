@@ -28,7 +28,7 @@ if (!process.env.FRONTEND_URL) {
 
 app.use(
     cors({
-        origin: process.env.FRONTEND_URL || "http://localhost:3001",
+        origin: process.env.FRONTEND_URL || "http://localhost:3001" || "https://rental-bridge-backend-1.onrender.com",
         methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
         credentials: !!process.env.FRONTEND_URL,
     })

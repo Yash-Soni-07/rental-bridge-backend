@@ -33,7 +33,6 @@ app.use(
             const localOrigins = ["http://localhost:3001", "http://localhost:5173"];
 
             // 2. Allow your specific Vercel project (including all preview branches)
-            // This regex checks if the origin ends with 'vercel.app'
             const isVercel = origin && origin.endsWith(".vercel.app");
 
             if (!origin || localOrigins.includes(origin) || isVercel) {
@@ -49,8 +48,8 @@ app.use(
     })
 );
 
-// Add this immediately after the cors block to handle "Preflight" requests
-app.options("/*", cors());
+// REMOVED app.options() line - it is redundant and causing the crash.
+// The cors() middleware above already handles OPTIONS requests globally.
 
 // ─── Public Routes ────────────────────────────────────────
 

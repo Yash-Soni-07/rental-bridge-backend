@@ -201,7 +201,7 @@ router.put("/:id", authenticate, async (req: Request, res: Response) => {
             return res.status(400).json({ error: "Request body is required" });
         }
 
-        const allowedFields: Record<string, unknown> = {};
+        const allowedFields: any = {}; // Using any here prevents deep type-checking issues with Drizzle's set
         if (req.body.status !== undefined) allowedFields.status = req.body.status;
         if (req.body.notes !== undefined) allowedFields.notes = req.body.notes;
         if (req.body.move_in_date !== undefined) {
@@ -219,21 +219,34 @@ router.put("/:id", authenticate, async (req: Request, res: Response) => {
             return res.status(400).json({ error: "No updatable fields provided" });
         }
 
-        // 🔒 Ownership folded atomically into the WHERE predicate (eliminates TOCTOU)
-        const whereClause =
-            req.user?.role === "admin"
-                ? eq(applications.id, id)
-                : and(eq(applications.id, id), eq(applications.applicant_id, req.user!.id));
+        // 1. Fetch application
+        const appResults = await db.select().from(applications).where(eq(applications.id, id)).limit(1);
 
+        if (appResults.length === 0) {
+            return res.status(404).json({ error: "Application not found" });
+        }
+
+        const application = appResults[0]!; // Use the '!' non-null assertion here
+
+        // 2. Fetch property to identify the owner
+        const propResults = await db.select().from(properties).where(eq(properties.id, application.property_id)).limit(1);
+        const property = propResults[0];
+
+        // 3. Authorization Check
+        const isAdmin = req.user?.role === "admin";
+        const isApplicant = application.applicant_id === req.user?.id;
+        const isOwner = property && property.owner_id === req.user?.id;
+
+        if (!isAdmin && !isApplicant && !isOwner) {
+            return res.status(403).json({ error: "Forbidden: You do not have access to update this application" });
+        }
+
+        // 4. Perform Update
         const updated = await db
             .update(applications)
             .set({ ...allowedFields, updated_at: new Date() })
-            .where(whereClause)
+            .where(eq(applications.id, id))
             .returning();
-
-        if (!updated.length) {
-            return res.status(404).json({ error: "Application not found" });
-        }
 
         return res.status(200).json(updated[0]);
     } catch (error) {

@@ -28,7 +28,7 @@ if (!process.env.FRONTEND_URL) {
 
 app.use(
     cors({
-        origin: process.env.FRONTEND_URL || "http://localhost:3001" || "https://rental-bridge-frontend.vercel.app",
+        origin: process.env.FRONTEND_URL || "http://localhost:3001" || "https://rental-bridge-frontend.vercel.app" || "https://rental-bridge-frontend-66yyby3te-yash-soni-07s-projects.vercel.app",
         methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
         credentials: !!process.env.FRONTEND_URL,
     })

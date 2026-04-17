@@ -29,13 +29,13 @@ if (!process.env.FRONTEND_URL) {
 app.use(
     cors({
         origin: (origin, callback) => {
-            // 1. Allow local development
-            const localOrigins = ["http://localhost:3001", "http://localhost:5173"];
+            // 1. Allow local development (any localhost port)
+            const isLocalhost = origin && /^http:\/\/localhost:\d+$/.test(origin);
 
             // 2. Allow your specific Vercel project (including all preview branches)
             const isVercel = origin && origin.endsWith(".vercel.app");
 
-            if (!origin || localOrigins.includes(origin) || isVercel) {
+            if (!origin || isLocalhost || isVercel) {
                 callback(null, true);
             } else {
                 console.error(`🚫 CORS blocked for: ${origin}`);

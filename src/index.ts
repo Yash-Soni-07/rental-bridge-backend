@@ -49,7 +49,7 @@ app.use(
 // =========================================================================
 // 🚨 TEMPORARY HACKATHON PROXY: REDIRECTS EVERYTHING TO GOOGLE CLOUD
 // =========================================================================
-app.all('*', (req, res, next) => {
+app.use((req, res, next) => {
     // We ignore the root health check so Render still knows the app is alive
     if (req.originalUrl === "/") {
         return next();

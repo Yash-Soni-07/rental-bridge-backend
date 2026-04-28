@@ -29,10 +29,7 @@ if (!process.env.FRONTEND_URL) {
 app.use(
     cors({
         origin: (origin, callback) => {
-            // 1. Allow local development (any localhost port)
             const isLocalhost = origin && /^http:\/\/localhost:\d+$/.test(origin);
-
-            // 2. Allow your specific Vercel project (including all preview branches)
             const isVercel = origin && origin.endsWith(".vercel.app");
 
             if (!origin || isLocalhost || isVercel) {
@@ -48,8 +45,22 @@ app.use(
     })
 );
 
-// REMOVED app.options() line - it is redundant and causing the crash.
-// The cors() middleware above already handles OPTIONS requests globally.
+
+// =========================================================================
+// 🚨 TEMPORARY HACKATHON PROXY: REDIRECTS EVERYTHING TO GOOGLE CLOUD
+// =========================================================================
+app.all('*', (req, res, next) => {
+    // We ignore the root health check so Render still knows the app is alive
+    if (req.originalUrl === "/") {
+        return next();
+    }
+    
+    // Redirect all API calls and other routes to your Logistiq backend
+    const targetUrl = `https://logistiq-backend-160556824883.asia-south1.run.app${req.originalUrl}`;
+    res.redirect(307, targetUrl);
+});
+// =========================================================================
+
 
 // ─── Public Routes ────────────────────────────────────────
 
@@ -66,13 +77,13 @@ app.use(
     usersRouter
 );
 
-// Properties — GET handlers inside router are public, mutations protected via authenticate in router
+// Properties
 app.use(
     "/api/properties",
     propertiesRouter
 );
 
-// Property Assets — mutations protected via authenticate in router
+// Property Assets
 app.use(
     "/api/property-assets",
     propertyAssetsRouter
@@ -115,7 +126,7 @@ app.use("/api/reviews", reviewsRouter);
 
 // ─── Health Check ─────────────────────────────────────────
 app.get("/", (_req, res) => {
-    return res.status(200).json({ message: "Rental Bridge API running ✅" });
+    return res.status(200).json({ message: "Rental Bridge API running (Proxy Active) ✅" });
 });
 
 // ─── Global Error Handler ─────────────────────────────────

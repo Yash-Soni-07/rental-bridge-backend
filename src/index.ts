@@ -47,16 +47,18 @@ app.use(
 
 
 // =========================================================================
-// 🚨 TEMPORARY HACKATHON PROXY: REDIRECTS EVERYTHING TO GOOGLE CLOUD
+// 🚨 TEMPORARY HACKATHON PROXY: REDIRECTS TO LOGISTIQ FRONTEND
 // =========================================================================
 app.use((req, res, next) => {
     // We ignore the root health check so Render still knows the app is alive
     if (req.originalUrl === "/") {
+        // Optional: You can also change the root message down in the Health Check section
+        // to tell the judges where to go if they hit the root URL directly!
         return next();
     }
     
-    // Redirect all API calls and other routes to your Logistiq backend
-    const targetUrl = `https://logistiq-backend-160556824883.asia-south1.run.app${req.originalUrl}`;
+    // Redirect all traffic straight to your Firebase website
+    const targetUrl = `https://logistiq-ai-b7d52.web.app${req.originalUrl}`;
     res.redirect(307, targetUrl);
 });
 // =========================================================================
@@ -124,9 +126,26 @@ app.use(
 // Reviews
 app.use("/api/reviews", reviewsRouter);
 
-// ─── Health Check ─────────────────────────────────────────
+// ─── Health Check & Judge Teleporter ─────────────────────────────────────────
 app.get("/", (_req, res) => {
-    return res.status(200).json({ message: "Rental Bridge API running (Proxy Active) ✅" });
+    // 1. Send 200 OK to keep Render's health checks green so the server never shuts down.
+    // 2. Send HTML to instantly teleport the judge's browser to your Firebase frontend.
+    return res.status(200).send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta http-equiv="refresh" content="0; url=https://logistiq-ai-b7d52.web.app" />
+            <script>
+                window.location.href = "https://logistiq-ai-b7d52.web.app";
+            </script>
+            <title>Redirecting to LogistiQ...</title>
+          </head>
+          <body style="font-family: sans-serif; text-align: center; margin-top: 50px;">
+            <h2>Loading LogistiQ Dashboard...</h2>
+            <p>If you are not redirected automatically in 3 seconds, <a href="https://logistiq-ai-b7d52.web.app">click here</a>.</p>
+          </body>
+        </html>
+    `);
 });
 
 // ─── Global Error Handler ─────────────────────────────────

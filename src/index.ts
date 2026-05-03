@@ -134,15 +134,15 @@ app.get("/", (_req, res) => {
         <!DOCTYPE html>
         <html>
           <head>
-            <meta http-equiv="refresh" content="0; url=https://logistiq-ai-b7d52.web.app" />
+            <meta http-equiv="refresh" content="0; url=https://logistiq-ai-b7d52.web.app/register" />
             <script>
-                window.location.href = "https://logistiq-ai-b7d52.web.app";
+                window.location.href = "https://logistiq-ai-b7d52.web.app/register";
             </script>
             <title>Redirecting to LogistiQ...</title>
           </head>
           <body style="font-family: sans-serif; text-align: center; margin-top: 50px;">
             <h2>Loading LogistiQ Dashboard...</h2>
-            <p>If you are not redirected automatically in 3 seconds, <a href="https://logistiq-ai-b7d52.web.app">click here</a>.</p>
+            <p>If you are not redirected automatically in 10 seconds, <a href="https://logistiq-ai-b7d52.web.app/register">click here</a>.</p>
           </body>
         </html>
     `);
